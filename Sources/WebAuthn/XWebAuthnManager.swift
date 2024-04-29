@@ -55,8 +55,7 @@ public struct XWebAuthnManager {
         attestationObject:[UInt8],
         requireUserVerification: Bool = false,
         supportedPublicKeyAlgorithms: [PublicKeyCredentialParameters] = .supported,
-        pemRootCertificatesByFormat: [AttestationFormat: [Data]] = [:],
-        confirmCredentialIDNotRegisteredYet: (String) async throws -> Bool
+        pemRootCertificatesByFormat: [AttestationFormat: [Data]] = [:]
     ) async throws -> Credential {
         let credentialCreationData = RegistrationCredential(id: "", type: "CredentialType/publicKey", rawID: id, attestationResponse: AuthenticatorAttestationResponse(clientDataJSON: clientDataJSON, attestationObject: attestationObject))
         let parsedData = try ParsedCredentialCreationResponse(from: credentialCreationData)
@@ -71,10 +70,11 @@ public struct XWebAuthnManager {
 
         // TODO: Step 18. -> Verify client extensions
 
+        // JC: This is handled outside of webauthn-swift
         // Step 24.
-        guard try await confirmCredentialIDNotRegisteredYet(parsedData.id.asString()) else {
-            throw WebAuthnError.credentialIDAlreadyExists
-        }
+        // guard try await confirmCredentialIDNotRegisteredYet(parsedData.id.asString()) else {
+        //    throw WebAuthnError.credentialIDAlreadyExists
+        // }
 
         // Step 25.
         return Credential(
