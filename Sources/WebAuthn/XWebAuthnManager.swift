@@ -47,15 +47,18 @@ public struct XWebAuthnManager {
     ///     handle that.
     /// - Returns:  A new `Credential` with information about the authenticator and registration
     public static func performRegistration(
+        id: [UInt8],
         challenge: [UInt8],
         relyingPartyID:String,
         relyingPartyOrigin:String,
-        credentialCreationData: RegistrationCredential,
+        clientDataJSON:[UInt8],
+        attestationObject:[UInt8],
         requireUserVerification: Bool = false,
         supportedPublicKeyAlgorithms: [PublicKeyCredentialParameters] = .supported,
         pemRootCertificatesByFormat: [AttestationFormat: [Data]] = [:],
         confirmCredentialIDNotRegisteredYet: (String) async throws -> Bool
     ) async throws -> Credential {
+        let credentialCreationData = RegistrationCredential(id: "", type: "CredentialType/publicKey", rawID: id, attestationResponse: AuthenticatorAttestationResponse(clientDataJSON: clientDataJSON, attestationObject: attestationObject))
         let parsedData = try ParsedCredentialCreationResponse(from: credentialCreationData)
         let attestedCredentialData = try await parsedData.verify(
             storedChallenge: challenge,
