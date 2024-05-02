@@ -47,20 +47,25 @@ public struct XWebAuthnManager {
     ///     handle that.
     /// - Returns:  A new `Credential` with information about the authenticator and registration
     public static func performRegistration(
-        id: [UInt8],
-        challenge: [UInt8],
+        id: Data,
+        challenge: Data,
         relyingPartyID:String,
         relyingPartyOrigin:String,
-        clientDataJSON:[UInt8],
-        attestationObject:[UInt8],
+        clientDataJSON:Data,
+        attestationObject:Data,
         requireUserVerification: Bool = false,
         supportedPublicKeyAlgorithms: [PublicKeyCredentialParameters] = .supported,
         pemRootCertificatesByFormat: [AttestationFormat: [Data]] = [:]
     ) async throws -> Credential {
-        let credentialCreationData = RegistrationCredential(id: "", type: "CredentialType/publicKey", rawID: id, attestationResponse: AuthenticatorAttestationResponse(clientDataJSON: clientDataJSON, attestationObject: attestationObject))
+        let idBytes = [UInt8](id)
+        let jsonDataBytes = [UInt8](clientDataJSON)
+        let attestationBytes = [UInt8](attestationObject)
+        let challengeBytes = [UInt8](challenge)
+        
+        let credentialCreationData = RegistrationCredential(id: "", type: "CredentialType/publicKey", rawID: idBytes, attestationResponse: AuthenticatorAttestationResponse(clientDataJSON: jsonDataBytes, attestationObject: attestationBytes))
         let parsedData = try ParsedCredentialCreationResponse(from: credentialCreationData)
         let attestedCredentialData = try await parsedData.verify(
-            storedChallenge: challenge,
+            storedChallenge: challengeBytes,
             verifyUser: requireUserVerification,
             relyingPartyID: relyingPartyID,
             relyingPartyOrigin: relyingPartyOrigin,
