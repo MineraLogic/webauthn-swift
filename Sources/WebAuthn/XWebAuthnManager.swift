@@ -106,23 +106,26 @@ public struct XWebAuthnManager {
     /// - Returns: Information about the authenticator
     public func performAuthentication(
         credential: AuthenticationCredential,
-        expectedChallenge: [UInt8],
+        expectedChallenge: Data,
         relyingPartyID:String,
         relyingPartyOrigin:String,
-        credentialPublicKey: [UInt8],
+        credentialPublicKey: Data,
         credentialCurrentSignCount: UInt32,
         requireUserVerification: Bool = false
     ) throws -> VerifiedAuthentication {
         guard credential.type == .publicKey
         else { throw WebAuthnError.invalidAssertionCredentialType }
 
+        let expectedChallengeBytes = [UInt8](expectedChallenge)
+        let publicKeyBytes = [UInt8](credentialPublicKey)
+        
         let parsedAssertion = try ParsedAuthenticatorAssertionResponse(from: credential.response)
         try parsedAssertion.verify(
-            expectedChallenge: expectedChallenge,
+            expectedChallenge: expectedChallengeBytes,
             relyingPartyOrigin: relyingPartyOrigin,
             relyingPartyID: relyingPartyID,
             requireUserVerification: requireUserVerification,
-            credentialPublicKey: credentialPublicKey,
+            credentialPublicKey: publicKeyBytes,
             credentialCurrentSignCount: credentialCurrentSignCount
         )
 
