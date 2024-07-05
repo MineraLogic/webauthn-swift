@@ -27,17 +27,20 @@ import Foundation
 /// ``PublicKeyCredentialRequestOptions`` to the client.
 /// When the client has received the response from the authenticator, pass the response to
 /// `finishAuthentication()`.
-public struct WebAuthnManager {
+public struct WebAuthnManager: Sendable {
     private let configuration: Configuration
 
     private let challengeGenerator: ChallengeGenerator
 
-    /// Create a new WebAuthnManager using the given configuration and challenge generator.
+    /// Create a new WebAuthnManager using the given configuration.
     ///
     /// - Parameters:
     ///   - configuration: The configuration to use for this manager.
-    ///   - challengeGenerator: The challenge generator to use for this manager. Defaults to a live generator.
-    public init(configuration: Configuration, challengeGenerator: ChallengeGenerator = .live) {
+    public init(configuration: Configuration) {
+        self.init(configuration: configuration, challengeGenerator: .live)
+    }
+    
+    package init(configuration: Configuration, challengeGenerator: ChallengeGenerator) {
         self.configuration = configuration
         self.challengeGenerator = challengeGenerator
     }
@@ -48,14 +51,14 @@ public struct WebAuthnManager {
     /// - Parameters:
     ///   - user: The user to register.
     ///   - timeout: How long the browser should give the user to choose an authenticator. This value
-    ///     is a *hint* and may be ignored by the browser. Defaults to 60 seconds.
+    ///     is a *hint* and may be ignored by the browser. Defaults to 300000 milliseconds (5 minutes).
     ///   - attestation: The Relying Party's preference regarding attestation. Defaults to `.none`.
     ///   - publicKeyCredentialParameters: A list of public key algorithms the Relying Party chooses to restrict
     ///     support to. Defaults to all supported algorithms.
     /// - Returns: Registration options ready for the browser.
     public func beginRegistration(
         user: PublicKeyCredentialUserEntity,
-        timeout: Duration? = .seconds(3600),
+        timeout: Duration? = .seconds(5*60),
         attestation: AttestationConveyancePreference = .none,
         publicKeyCredentialParameters: [PublicKeyCredentialParameters] = .supported
     ) -> PublicKeyCredentialCreationOptions {
