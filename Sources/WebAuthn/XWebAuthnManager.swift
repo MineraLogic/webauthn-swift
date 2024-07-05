@@ -28,6 +28,28 @@
 
 import Foundation
 
+public struct XWebAuthnContext {
+    /// The unique identifier for these credentials
+    public let id: Data
+    
+    /// The nonce (random bytes) specific to this ceremony
+    public let challenge: Data
+
+    /// The entity that is performing the ceremony
+    public let relyingPartyID: String
+    
+    /// The URL associated with the relying party
+    public let relyingPartyOrigin: String
+    
+    public init(id: Data, challenge: Data, relyingPartyID: String, relyingPartyOrigin: String) {
+        self.id = id
+        self.challenge = challenge
+        self.relyingPartyID = relyingPartyID
+        self.relyingPartyOrigin = relyingPartyOrigin
+    }
+}
+
+
 /// Main entrypoint for WebAuthn registration and authentication ceremonies.
 ///
 public struct XWebAuthnManager {
@@ -47,28 +69,25 @@ public struct XWebAuthnManager {
     ///     handle that.
     /// - Returns:  A new `Credential` with information about the authenticator and registration
     public static func validateRegistration(
-        id: Data,
-        challenge: Data,
-        relyingPartyID:String,
-        relyingPartyOrigin:String,
+        context: XWebAuthnContext,
         clientDataJSON:Data,
         attestationObject:Data,
         requireUserVerification: Bool = false,
         supportedPublicKeyAlgorithms: [PublicKeyCredentialParameters] = .supported,
         pemRootCertificatesByFormat: [AttestationFormat: [Data]] = [:]
     ) async throws -> Credential {
-        let idBytes = [UInt8](id)
+        let idBytes = [UInt8](context.id)
         let jsonDataBytes = [UInt8](clientDataJSON)
         let attestationBytes = [UInt8](attestationObject)
-        let challengeBytes = [UInt8](challenge)
+        let challengeBytes = [UInt8](context.challenge)
         
         let credentialCreationData = RegistrationCredential(id: "", type: "CredentialType/publicKey", rawID: idBytes, attestationResponse: AuthenticatorAttestationResponse(clientDataJSON: jsonDataBytes, attestationObject: attestationBytes))
         let parsedData = try ParsedCredentialCreationResponse(from: credentialCreationData)
         let attestedCredentialData = try await parsedData.verify(
             storedChallenge: challengeBytes,
             verifyUser: requireUserVerification,
-            relyingPartyID: relyingPartyID,
-            relyingPartyOrigin: relyingPartyOrigin,
+            relyingPartyID: context.relyingPartyID,
+            relyingPartyOrigin: context.relyingPartyOrigin,
             supportedPublicKeyAlgorithms: supportedPublicKeyAlgorithms,
             pemRootCertificatesByFormat: pemRootCertificatesByFormat
         )
@@ -97,6 +116,8 @@ public struct XWebAuthnManager {
     /// Verify a response from navigator.credentials.get()
     ///
     /// - Parameters:
+    ///   - clientDataJSON:
+    ///   - id: credential ID associated with the request
     ///   - credential: The value returned from `navigator.credentials.get()`.
     ///   - expectedChallenge: The challenge passed to the authenticator within the preceding authentication options.
     ///   - credentialPublicKey: The public key for the credential's ID as provided in a preceding authenticator
@@ -105,6 +126,7 @@ public struct XWebAuthnManager {
     ///   - requireUserVerification: Whether or not to require that the authenticator verified the user.
     /// - Returns: Information about the authenticator
     public static func validateAuthentication(
+        id: Data,
         credential: AuthenticationCredential,
         expectedChallenge: Data,
         relyingPartyID:String,
@@ -113,6 +135,60 @@ public struct XWebAuthnManager {
         credentialCurrentSignCount: UInt32,
         requireUserVerification: Bool = false
     ) throws -> VerifiedAuthentication {
+
+
+        public struct AuthenticationCredential {
+            /// The credential ID of the newly created credential.
+            public let id: URLEncodedBase64
+
+            /// The raw credential ID of the newly created credential.
+            public let rawID: [UInt8]
+
+            /// The attestation response from the authenticator.
+            public let response: AuthenticatorAssertionResponse
+
+            /// Reports the authenticator attachment modality in effect at the time the navigator.credentials.create() or
+            /// navigator.credentials.get() methods successfully complete
+            public let authenticatorAttachment: AuthenticatorAttachment?
+
+            /// Value will always be ``CredentialType/publicKey`` (for now)
+            public let type: CredentialType
+        }
+
+        public struct AuthenticatorAssertionResponse {
+            /// Representation of what we passed to `navigator.credentials.get()`
+            ///
+            /// When decoding using `Decodable`, this is decoded from base64url to bytes.
+            public let clientDataJSON: [UInt8]
+
+            /// Contains the authenticator data returned by the authenticator.
+            ///
+            /// When decoding using `Decodable`, this is decoded from base64url to bytes.
+            public let authenticatorData: [UInt8]
+
+            /// Contains the raw signature returned from the authenticator
+            ///
+            /// When decoding using `Decodable`, this is decoded from base64url to bytes.
+            public let signature: [UInt8]
+
+            /// Contains the user handle returned from the authenticator, or null if the authenticator did not return
+            /// a user handle. Used by to give scope to credentials.
+            ///
+            /// When decoding using `Decodable`, this is decoded from base64url to bytes.
+            public let userHandle: [UInt8]?
+
+            /// Contains an attestation object, if the authenticator supports attestation in assertions.
+            /// The attestation object, if present, includes an attestation statement. Unlike the attestationObject
+            /// in an AuthenticatorAttestationResponse, it does not contain an authData key because the authenticator
+            /// data is provided directly in an AuthenticatorAssertionResponse structure.
+            ///
+            /// When decoding using `Decodable`, this is decoded from base64url to bytes.
+            public let attestationObject: [UInt8]?
+        }
+
+        
+        
+        
         guard credential.type == .publicKey
         else { throw WebAuthnError.invalidAssertionCredentialType }
 
